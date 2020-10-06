@@ -1,0 +1,5 @@
+D:\Users\A-Cron\Documents\Coding\CSharp\CrystalReportProject\CrystalReports
+ServerName
+DatabaseName
+UserID
+Password
