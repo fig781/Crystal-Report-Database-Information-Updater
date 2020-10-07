@@ -15,12 +15,9 @@ namespace Shattered_Crystal_Hackathon
     class Program
     {
         static void Main(string[] args)
-        {
-            //string fullProgramFolderPath = Path.GetFullPath(@"CrystalReportProject/CrystalProject"); 
-            string fullProgramFolderPath = @"D:\Users\A-Cron\Documents\Coding\CSharp\CrystalReportProject\CrystalProject";
-            
-            //string test = Path.GetFullPath("DatabaseConfig.txt");
-            
+        {   
+            //Gets the folder path that the program exe is located
+            string fullProgramFolderPath = Path.GetFullPath(".");
             bool doesConfigFileExist = CheckIfTxtFileExists(fullProgramFolderPath);
             if(doesConfigFileExist == true)
             {
@@ -28,15 +25,15 @@ namespace Shattered_Crystal_Hackathon
             }
             else
             {    
-                EndProgram("Error: Please add the DatabaseConfig.txt file to the project folder, then re-run this program");
+                EndProgram("Error: Please add the DatabaseConfig.txt file to the same folder as this program, then re-run this program");
             }
 
-            string databaseConfigPath = @"D:\Users\A-Cron\Documents\Coding\CSharp\CrystalReportProject\CrystalProject\DatabaseConfig.txt";
-            string[] lines = File.ReadAllLines(databaseConfigPath);
+            string databaseConfigPath = Path.GetFullPath("DatabaseConfig.txt");
+            string[] lines = File.ReadAllLines(databaseConfigPath); 
             DatabaseInfo newDatabaseInfo = new DatabaseInfo();
             if (lines.Length == 5)
             {  
-                newDatabaseInfo.CrystalFilesFolder = Path.GetFullPath(lines[0]);
+                newDatabaseInfo.CrystalFilesFolder = lines[0];
                 newDatabaseInfo.ServerName = lines[1];
                 newDatabaseInfo.DatabaseName = lines[2];
                 newDatabaseInfo.UserId = lines[3];
@@ -49,28 +46,42 @@ namespace Shattered_Crystal_Hackathon
                 Console.WriteLine("Database name: " + newDatabaseInfo.DatabaseName);
                 Console.WriteLine("UserID: " + newDatabaseInfo.UserId);
                 Console.WriteLine("Password: " + newDatabaseInfo.Password);
+                Console.WriteLine();
             }
             else
             {
-                EndProgram("Error: Please add all of the required database config information to the DatabaseConfig.txt file");
+                Console.WriteLine();
+                Console.WriteLine("Error: Please add all of the required database config information to the DatabaseConfig.txt file");
+                Console.WriteLine("The DatabaseConfig.txt file should look something like this:");
+                Console.WriteLine("Crystal Reports Folder Path");
+                Console.WriteLine("Server Name");
+                Console.WriteLine("Database Name");
+                Console.WriteLine("User Id");
+                EndProgram("Password");
             }
 
             if (Directory.Exists(newDatabaseInfo.CrystalFilesFolder))
             {
+                int rptFileCount = 0;
                 string[] filesInDirectory = Directory.GetFiles(newDatabaseInfo.CrystalFilesFolder);
                 foreach(string file in filesInDirectory)
                 {
                     ProcessCrystalReport(file, newDatabaseInfo.ServerName, newDatabaseInfo.DatabaseName, newDatabaseInfo.UserId, newDatabaseInfo.Password);
+                    rptFileCount++;
+                }
+
+                if(rptFileCount == 0)
+                {
+                    EndProgram("Error: No .rpt files found. Add .rpt files to this directory and re-run the program");
                 }
             }
             else
             {
-                EndProgram("Error: Crystal reports folder not found");
+                EndProgram("Error: Crystal reports folder not found. The folder path may be written incorrectly in the DatabaseConfig.txt file");
             }
 
-
             Console.WriteLine();
-            Console.WriteLine("All reports updated");
+            Console.WriteLine("Reports updated");
             Console.WriteLine("Press any key to exit...");
             Console.ReadKey();
             return;
@@ -100,32 +111,42 @@ namespace Shattered_Crystal_Hackathon
             Environment.Exit(0);
         }
 
-        public static void ProcessCrystalReport(string filePath, string serverName, string databaseName, string userId, string password)
+        public static int ProcessCrystalReport(string filePath, string serverName, string databaseName, string userId, string password)
         {
-            
-            string fileExtension = Path.GetExtension(filePath);
-            if(fileExtension == ".rpt")
+            try
             {
-                ReportDocument boReportDocument = new ReportDocument();
-                boReportDocument.Load(filePath);
-
-                // Create a ConnectionInfo
-                ConnectionInfo boConnectionInfo = new ConnectionInfo();
-                boConnectionInfo.ServerName = serverName;
-                boConnectionInfo.DatabaseName = databaseName;
-                boConnectionInfo.UserID = userId;
-                boConnectionInfo.Password = password;
-
-                ModifyConnectionInfo(boReportDocument.Database, boConnectionInfo);
-
-                foreach (ReportDocument boSubreport in boReportDocument.Subreports)
+                string fileExtension = Path.GetExtension(filePath);
+                if (fileExtension == ".rpt")
                 {
-                    ModifyConnectionInfo(boSubreport.Database, boConnectionInfo);
+                    ReportDocument boReportDocument = new ReportDocument();
+                    boReportDocument.Load(filePath);
+
+                    // Create a ConnectionInfo
+                    ConnectionInfo boConnectionInfo = new ConnectionInfo();
+                    boConnectionInfo.ServerName = serverName;
+                    boConnectionInfo.DatabaseName = databaseName;
+                    boConnectionInfo.UserID = userId;
+                    boConnectionInfo.Password = password;
+
+                    ModifyConnectionInfo(boReportDocument.Database, boConnectionInfo);
+
+                    foreach (ReportDocument boSubreport in boReportDocument.Subreports)
+                    {
+                        ModifyConnectionInfo(boSubreport.Database, boConnectionInfo);
+                    }
+
+                    Console.WriteLine("{0} - Updated", Path.GetFileName(filePath));
+                    return 1;
+                }
+                else
+                {
+                    return 0;
                 }
             }
-            else
+            catch
             {
-                return;
+                Console.WriteLine("{0} - Error encountered", Path.GetFileName(filePath));
+                return 0;
             }
         }
 
