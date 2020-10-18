@@ -3,12 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 using System.IO;
-
 using CrystalDecisions.CrystalReports.Engine;
 using CrystalDecisions.Shared;
-
-
 
 namespace Shattered_Crystal_Hackathon
 {
@@ -25,13 +23,13 @@ namespace Shattered_Crystal_Hackathon
             }
             else
             {    
-                EndProgram("Error: Please add the DatabaseConfig.txt file to the same folder as this program, then re-run this program");
+                EndProgram("Error: DatabaseConfig.txt not found. Add the DatabaseConfig.txt file to the same folder as this program, then re-run this program");
             }
 
             string databaseConfigPath = Path.GetFullPath("DatabaseConfig.txt");
-            string[] lines = File.ReadAllLines(databaseConfigPath); 
+            string[] lines = File.ReadAllLines(databaseConfigPath);
             DatabaseInfo newDatabaseInfo = new DatabaseInfo();
-            if (lines.Length == 5)
+            if (lines.Length >= 5)
             {  
                 newDatabaseInfo.CrystalFilesFolder = lines[0];
                 newDatabaseInfo.ServerName = lines[1];
@@ -41,17 +39,19 @@ namespace Shattered_Crystal_Hackathon
 
                 Console.WriteLine();
                 Console.WriteLine("All fields found in DatabaseConfig.txt");
+                Console.WriteLine();
                 Console.WriteLine("Crystal files folder path: " + newDatabaseInfo.CrystalFilesFolder);
                 Console.WriteLine("Server name: " + newDatabaseInfo.ServerName);
                 Console.WriteLine("Database name: " + newDatabaseInfo.DatabaseName);
                 Console.WriteLine("UserID: " + newDatabaseInfo.UserId);
                 Console.WriteLine("Password: " + newDatabaseInfo.Password);
                 Console.WriteLine();
+                
             }
             else
             {
                 Console.WriteLine();
-                Console.WriteLine("Error: Please add all of the required database config information to the DatabaseConfig.txt file");
+                Console.WriteLine("Error: Add all of the required database config information to the DatabaseConfig.txt file");
                 Console.WriteLine("The DatabaseConfig.txt file should look something like this:");
                 Console.WriteLine("Crystal Reports Folder Path");
                 Console.WriteLine("Server Name");
@@ -60,8 +60,19 @@ namespace Shattered_Crystal_Hackathon
                 EndProgram("Password");
             }
 
+
+            Console.Write("Proceed (Y/N): ");
+            string input = Console.ReadLine().ToUpper();
+            if(input != "Y")
+            {
+                Console.WriteLine();
+                EndProgram("Ending program");
+            }
+
             if (Directory.Exists(newDatabaseInfo.CrystalFilesFolder))
             {
+                Console.WriteLine();
+                Console.WriteLine("Altering crystal files:");
                 int rptFileCount = 0;
                 string[] filesInDirectory = Directory.GetFiles(newDatabaseInfo.CrystalFilesFolder);
                 foreach(string file in filesInDirectory)
@@ -81,11 +92,7 @@ namespace Shattered_Crystal_Hackathon
             }
 
             Console.WriteLine();
-            Console.WriteLine("Reports updated");
-            Console.WriteLine("Press any key to exit...");
-            Console.ReadKey();
-            return;
-            
+            EndProgram("Crystal files updated");
         }
 
         public static bool CheckIfTxtFileExists(string path)
@@ -106,11 +113,27 @@ namespace Shattered_Crystal_Hackathon
         public static void EndProgram( string message )
         {
             Console.WriteLine(message);
-            Console.WriteLine("Press any key to exit...");
+            Console.Write("Press any key to exit...");
             Console.ReadKey();
             Environment.Exit(0);
         }
 
+        /*
+        public static bool CheckForWhiteSpace(string text)
+        {
+            using(Regex regex = new Regex(@"\s"))
+            {
+                if(regex.IsMatch(text, @"\s") == true)
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+        }
+        */
         public static int ProcessCrystalReport(string filePath, string serverName, string databaseName, string userId, string password)
         {
             try
