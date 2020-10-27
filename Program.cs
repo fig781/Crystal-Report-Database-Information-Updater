@@ -1,9 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Text.RegularExpressions;
 using System.IO;
 using CrystalDecisions.CrystalReports.Engine;
 using CrystalDecisions.Shared;
@@ -13,21 +8,22 @@ namespace Shattered_Crystal_Hackathon
     class Program
     {
         static void Main(string[] args)
-        {   
-            //Gets the folder path that the program exe is located
-            string fullProgramFolderPath = Path.GetFullPath(".");
-            bool doesConfigFileExist = CheckIfTxtFileExists(fullProgramFolderPath);
-            if(doesConfigFileExist == true)
+        {
+            Console.WriteLine("Enter the path of the DatabaseConfig.txt file below. Ex: C:\\Users\\Bob\\Documents\\DatabaseConfig.txt: ");
+            string txtFilePathInput = Console.ReadLine();
+            Console.WriteLine();
+
+            if (File.Exists(txtFilePathInput))
             {
-                Console.WriteLine("DatabaseConfig.txt file found");
+                Console.WriteLine("DatabaseConfig.txt file found.");               
             }
             else
-            {    
-                EndProgram("Error: DatabaseConfig.txt not found. Add the DatabaseConfig.txt file to the same folder as this program, then re-run this program");
+            {
+                EndProgram("Error: DatabaseConfig.txt not found. Make sure the file path is correct");
             }
 
-            string databaseConfigPath = Path.GetFullPath("DatabaseConfig.txt");
-            string[] lines = File.ReadAllLines(databaseConfigPath);
+            //string databaseConfigPath = Path.GetFullPath("DatabaseConfig.txt");
+            string[] lines = File.ReadAllLines(txtFilePathInput);
             DatabaseInfo newDatabaseInfo = new DatabaseInfo();
             if (lines.Length >= 5)
             {  
@@ -92,22 +88,7 @@ namespace Shattered_Crystal_Hackathon
             }
 
             Console.WriteLine();
-            EndProgram("Crystal files updated");
-        }
-
-        public static bool CheckIfTxtFileExists(string path)
-        {
-            string[] filesInFolder = Directory.GetFiles(path);
-            string fileName;
-            foreach(string file in filesInFolder)
-            {
-                fileName = Path.GetFileName(file);
-                if(fileName == "DatabaseConfig.txt")
-                {
-                    return true;
-                }
-            }
-            return false;
+            EndProgram("Program finished");
         }
 
         public static void EndProgram( string message )
@@ -118,22 +99,6 @@ namespace Shattered_Crystal_Hackathon
             Environment.Exit(0);
         }
 
-        /*
-        public static bool CheckForWhiteSpace(string text)
-        {
-            using(Regex regex = new Regex(@"\s"))
-            {
-                if(regex.IsMatch(text, @"\s") == true)
-                {
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-        }
-        */
         public static int ProcessCrystalReport(string filePath, string serverName, string databaseName, string userId, string password)
         {
             try
@@ -166,9 +131,11 @@ namespace Shattered_Crystal_Hackathon
                     return 0;
                 }
             }
-            catch
+            catch(Exception e)
             {
                 Console.WriteLine("{0} - Error encountered", Path.GetFileName(filePath));
+                Console.WriteLine(e);
+                Console.WriteLine();
                 return 0;
             }
         }
