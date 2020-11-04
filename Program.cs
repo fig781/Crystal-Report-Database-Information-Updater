@@ -1,5 +1,7 @@
 ﻿using System;
 using System.IO;
+using System.Text;
+using System.Collections.Generic;
 using CrystalDecisions.CrystalReports.Engine;
 using CrystalDecisions.Shared;
 
@@ -7,22 +9,31 @@ namespace Shattered_Crystal_Hackathon
 {
     class Program
     {
+         
         static void Main(string[] args)
         {
-            Console.WriteLine("Enter the path of the DatabaseConfig.txt file below. Ex: C:\\Users\\Bob\\Documents\\DatabaseConfig.txt: ");
-            string txtFilePathInput = Console.ReadLine();
-            Console.WriteLine();
+            //Find DatabaseConfig.txt file
+            bool proceed = false;
+            string txtFilePathInput = "";
+            while(proceed == false){
+                Console.WriteLine("Enter the path of the DatabaseConfig.txt file below. Ex: C:\\Users\\Bob\\Documents\\DatabaseConfig.txt: ");
+                txtFilePathInput = Console.ReadLine();
 
-            if (File.Exists(txtFilePathInput))
-            {
-                Console.WriteLine("DatabaseConfig.txt file found.");               
-            }
-            else
-            {
-                EndProgram("Error: DatabaseConfig.txt not found. Make sure the file path is correct");
+                if (File.Exists(txtFilePathInput))
+                {
+                    Console.WriteLine("DatabaseConfig.txt file found.");
+                    proceed = true;
+
+                }
+                else
+                {
+                    Console.WriteLine("Error: DatabaseConfig.txt not found. Make sure the file path is correct");
+                    Console.WriteLine();
+                }
             }
 
-            //string databaseConfigPath = Path.GetFullPath("DatabaseConfig.txt");
+            //Read DatabaseConfig.txt file 
+
             string[] lines = File.ReadAllLines(txtFilePathInput);
             DatabaseInfo newDatabaseInfo = new DatabaseInfo();
             if (lines.Length >= 5)
@@ -42,7 +53,6 @@ namespace Shattered_Crystal_Hackathon
                 Console.WriteLine("UserID: " + newDatabaseInfo.UserId);
                 Console.WriteLine("Password: " + newDatabaseInfo.Password);
                 Console.WriteLine();
-                
             }
             else
             {
@@ -56,7 +66,7 @@ namespace Shattered_Crystal_Hackathon
                 EndProgram("Password");
             }
 
-
+            //Proceed or end the program
             Console.Write("Proceed (Y/N): ");
             string input = Console.ReadLine().ToUpper();
             if(input != "Y")
@@ -65,18 +75,28 @@ namespace Shattered_Crystal_Hackathon
                 EndProgram("Ending program");
             }
 
+            //Check for and if need be, make a Log folder
+            string programFolderPath = txtFilePathInput.Remove(txtFilePathInput.Length - 18);
+            string logFolderPath = programFolderPath + "Logs";
+            if (!Directory.Exists(logFolderPath))
+            {
+                Directory.CreateDirectory(logFolderPath);
+            }
+
+            //Process and alter crystal files
+            List<string> logData = new List<string>();
             if (Directory.Exists(newDatabaseInfo.CrystalFilesFolder))
             {
                 Console.WriteLine();
                 Console.WriteLine("Altering crystal files:");
                 int rptFileCount = 0;
                 string[] filesInDirectory = Directory.GetFiles(newDatabaseInfo.CrystalFilesFolder);
-                foreach(string file in filesInDirectory)
+                foreach (string file in filesInDirectory)
                 {
-                    ProcessCrystalReport(file, newDatabaseInfo.ServerName, newDatabaseInfo.DatabaseName, newDatabaseInfo.UserId, newDatabaseInfo.Password);
+                    string updateLog = ProcessCrystalReport(file, newDatabaseInfo.ServerName, newDatabaseInfo.DatabaseName, newDatabaseInfo.UserId, newDatabaseInfo.Password);
+                    logData.Add(updateLog);
                     rptFileCount++;
                 }
-
                 if(rptFileCount == 0)
                 {
                     EndProgram("Error: No .rpt files found. Add .rpt files to this directory and re-run the program");
@@ -87,8 +107,31 @@ namespace Shattered_Crystal_Hackathon
                 EndProgram("Error: Crystal reports folder not found. The folder path may be written incorrectly in the DatabaseConfig.txt file");
             }
 
+            //Generate log file           
+            string logFileName = "Log-CrystalDatabaseUpdater-" + DateTime.Now.ToString("MM.dd.yyyy-hh.mm.sstt") + ".txt";
+            string logFilePath = Path.Combine(logFolderPath, logFileName);
+            using(FileStream fs = File.Create(logFilePath))
+            {
+                AddText(fs, "Server Name: " + newDatabaseInfo.ServerName);
+                AddText(fs, "\r\nDatabase Name: " + newDatabaseInfo.DatabaseName);
+                AddText(fs, "\r\nUser ID: " + newDatabaseInfo.UserId);
+                AddText(fs, "\r\nPassword: " + newDatabaseInfo.Password);
+                AddText(fs, "\r\n");
+
+                for(int i=0; i < logData.Count; i++)
+                {
+                    AddText(fs, logData[i] + "\r\n");
+                }
+            } 
+
             Console.WriteLine();
             EndProgram("Program finished");
+        }
+
+        public static void AddText(FileStream fs, string value)
+        {
+            byte[] info = new UTF8Encoding(true).GetBytes(value);
+            fs.Write(info, 0, info.Length);
         }
 
         public static void EndProgram( string message )
@@ -99,8 +142,9 @@ namespace Shattered_Crystal_Hackathon
             Environment.Exit(0);
         }
 
-        public static int ProcessCrystalReport(string filePath, string serverName, string databaseName, string userId, string password)
+        public static string ProcessCrystalReport(string filePath, string serverName, string databaseName, string userId, string password)
         {
+            string fileName ="Unknown";
             try
             {
                 string fileExtension = Path.GetExtension(filePath);
@@ -123,12 +167,14 @@ namespace Shattered_Crystal_Hackathon
                         ModifyConnectionInfo(boSubreport.Database, boConnectionInfo);
                     }
 
-                    Console.WriteLine("{0} - Updated", Path.GetFileName(filePath));
-                    return 1;
+                    fileName = Path.GetFileName(filePath);
+                    Console.WriteLine("{0} - Updated", fileName);
+
+                    return DateTime.Now.ToString() + " - " + fileName + " - Updated" ;
                 }
                 else
                 {
-                    return 0;
+                    return DateTime.Now.ToString() + " - " + fileName + " - File skipped";
                 }
             }
             catch(Exception e)
@@ -136,7 +182,7 @@ namespace Shattered_Crystal_Hackathon
                 Console.WriteLine("{0} - Error encountered", Path.GetFileName(filePath));
                 Console.WriteLine(e);
                 Console.WriteLine();
-                return 0;
+                return DateTime.Now.ToString() + " - " + fileName + " - Error encountered - " + e;
             }
         }
 
