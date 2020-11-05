@@ -9,7 +9,6 @@ namespace Shattered_Crystal_Hackathon
 {
     class Program
     {
-         
         static void Main(string[] args)
         {
             //Find DatabaseConfig.txt file
@@ -23,7 +22,6 @@ namespace Shattered_Crystal_Hackathon
                 {
                     Console.WriteLine("DatabaseConfig.txt file found.");
                     proceed = true;
-
                 }
                 else
                 {
@@ -33,7 +31,6 @@ namespace Shattered_Crystal_Hackathon
             }
 
             //Read DatabaseConfig.txt file 
-
             string[] lines = File.ReadAllLines(txtFilePathInput);
             DatabaseInfo newDatabaseInfo = new DatabaseInfo();
             if (lines.Length >= 5)
@@ -69,7 +66,7 @@ namespace Shattered_Crystal_Hackathon
             //Proceed or end the program
             Console.Write("Proceed (Y/N): ");
             string input = Console.ReadLine().ToUpper();
-            if(input != "Y")
+            if(input != "Y" && input !="YES")
             {
                 Console.WriteLine();
                 EndProgram("Ending program");
@@ -112,11 +109,12 @@ namespace Shattered_Crystal_Hackathon
             string logFilePath = Path.Combine(logFolderPath, logFileName);
             using(FileStream fs = File.Create(logFilePath))
             {
-                AddText(fs, "Server Name: " + newDatabaseInfo.ServerName);
+                AddText(fs, "Variables");
+                AddText(fs, "\r\nServer Name: " + newDatabaseInfo.ServerName);
                 AddText(fs, "\r\nDatabase Name: " + newDatabaseInfo.DatabaseName);
                 AddText(fs, "\r\nUser ID: " + newDatabaseInfo.UserId);
                 AddText(fs, "\r\nPassword: " + newDatabaseInfo.Password);
-                AddText(fs, "\r\n");
+                AddText(fs, "\r\n\r\n");
 
                 for(int i=0; i < logData.Count; i++)
                 {
@@ -145,6 +143,7 @@ namespace Shattered_Crystal_Hackathon
         public static string ProcessCrystalReport(string filePath, string serverName, string databaseName, string userId, string password)
         {
             string fileName ="Unknown";
+            string returnVariables = "";
             try
             {
                 string fileExtension = Path.GetExtension(filePath);
@@ -153,7 +152,6 @@ namespace Shattered_Crystal_Hackathon
                     ReportDocument boReportDocument = new ReportDocument();
                     boReportDocument.Load(filePath);
 
-                    // Create a ConnectionInfo
                     ConnectionInfo boConnectionInfo = new ConnectionInfo();
                     boConnectionInfo.ServerName = serverName;
                     boConnectionInfo.DatabaseName = databaseName;
@@ -170,11 +168,15 @@ namespace Shattered_Crystal_Hackathon
                     fileName = Path.GetFileName(filePath);
                     Console.WriteLine("{0} - Updated", fileName);
 
-                    return DateTime.Now.ToString() + " - " + fileName + " - Updated" ;
+                    //Write each section of the log file
+                    string[] connectionVariables = GetConnectionInfo(boReportDocument.Database);
+                    returnVariables = "\r\n" + "Server Name: " + connectionVariables[0] + "\r\n" + "Database Name: " + connectionVariables[1] + "\r\n" + "User ID: " + connectionVariables[2] + "\r\n" + "Password: " + boConnectionInfo.Password + "\r\n";
+
+                    return DateTime.Now.ToString() + " - " + fileName + " - Updated:" + returnVariables;
                 }
                 else
                 {
-                    return DateTime.Now.ToString() + " - " + fileName + " - File skipped";
+                    return DateTime.Now.ToString() + " - " + fileName + " - Skipped";
                 }
             }
             catch(Exception e)
@@ -186,19 +188,37 @@ namespace Shattered_Crystal_Hackathon
             }
         }
 
-        public static void ModifyConnectionInfo(CrystalDecisions.CrystalReports.Engine.Database boDatabase, ConnectionInfo boConnectionInfo)
+        public static void ModifyConnectionInfo(Database boDatabase, ConnectionInfo boConnectionInfo)
         {
             // Loop through each Table in the Database and apply the changes
-            foreach (CrystalDecisions.CrystalReports.Engine.Table boTable in boDatabase.Tables)
-            {
+            foreach (Table boTable in boDatabase.Tables)
+            {              
                 TableLogOnInfo boTableLogOnInfo = (TableLogOnInfo)boTable.LogOnInfo.Clone();
                 boTableLogOnInfo.ConnectionInfo = boConnectionInfo;
-
                 boTable.ApplyLogOnInfo(boTableLogOnInfo);
 
                 // The location may need to be updated if the fully qualified name changes.
                 //boTable.Location = "";    
             }
+        }
+
+        public static string[] GetConnectionInfo(Database boDatabase)
+        {
+            //Loops through once and grabs the table info
+            string[] connectionVariables = new string[4];
+            foreach (Table boTable in boDatabase.Tables)
+            {
+                TableLogOnInfo boTableLogOnInfo = (TableLogOnInfo)boTable.LogOnInfo.Clone();
+                connectionVariables[0] = boTableLogOnInfo.ConnectionInfo.ServerName;
+                connectionVariables[1] = boTableLogOnInfo.ConnectionInfo.DatabaseName;
+                connectionVariables[2] = boTableLogOnInfo.ConnectionInfo.UserID;
+                connectionVariables[3] = boTableLogOnInfo.ConnectionInfo.Password;
+                break;
+
+                //Known bug, Password cannot be retrieved. It will be an empy string. I know it is being set though. Cannot figure out fix.
+            }
+
+            return connectionVariables;
         }
     }
 }
