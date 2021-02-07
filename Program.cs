@@ -88,11 +88,14 @@ namespace Shattered_Crystal_Hackathon
                 Console.WriteLine("Altering crystal files:");
                 int rptFileCount = 0;
                 string[] filesInDirectory = Directory.GetFiles(newDatabaseInfo.CrystalFilesFolder);
+
+                int filesProcessed = 1;
                 foreach (string file in filesInDirectory)
                 {
-                    string updateLog = ProcessCrystalReport(file, newDatabaseInfo.ServerName, newDatabaseInfo.DatabaseName, newDatabaseInfo.UserId, newDatabaseInfo.Password);
+                    string updateLog = ProcessCrystalReport(filesProcessed, file, newDatabaseInfo.ServerName, newDatabaseInfo.DatabaseName, newDatabaseInfo.UserId, newDatabaseInfo.Password);
                     logData.Add(updateLog);
                     rptFileCount++;
+                    filesProcessed++;
                 }
                 if(rptFileCount == 0)
                 {
@@ -140,39 +143,44 @@ namespace Shattered_Crystal_Hackathon
             Environment.Exit(0);
         }
 
-        public static string ProcessCrystalReport(string filePath, string serverName, string databaseName, string userId, string password)
+        public static string ProcessCrystalReport(int timesRan, string filePath, string serverName, string databaseName, string userId, string password)
         {
             string fileName ="Unknown";
             string returnVariables = "";
+            timesRan.ToString();
+
             try
             {
                 string fileExtension = Path.GetExtension(filePath);
                 if (fileExtension == ".rpt")
                 {
-                    ReportDocument boReportDocument = new ReportDocument();
-                    boReportDocument.Load(filePath);
-
-                    ConnectionInfo boConnectionInfo = new ConnectionInfo();
-                    boConnectionInfo.ServerName = serverName;
-                    boConnectionInfo.DatabaseName = databaseName;
-                    boConnectionInfo.UserID = userId;
-                    boConnectionInfo.Password = password;
-
-                    ModifyConnectionInfo(boReportDocument.Database, boConnectionInfo);
-
-                    foreach (ReportDocument boSubreport in boReportDocument.Subreports)
+                    using(ReportDocument boReportDocument = new ReportDocument())
                     {
-                        ModifyConnectionInfo(boSubreport.Database, boConnectionInfo);
+                        
+                        boReportDocument.Load(filePath);
+
+                        ConnectionInfo boConnectionInfo = new ConnectionInfo();
+                        boConnectionInfo.ServerName = serverName;
+                        boConnectionInfo.DatabaseName = databaseName;
+                        boConnectionInfo.UserID = userId;
+                        boConnectionInfo.Password = password;
+
+                        ModifyConnectionInfo(boReportDocument.Database, boConnectionInfo);
+
+                        foreach (ReportDocument boSubreport in boReportDocument.Subreports)
+                        {
+                            ModifyConnectionInfo(boSubreport.Database, boConnectionInfo);
+                        }
+
+                        fileName = Path.GetFileName(filePath);
+                        Console.WriteLine("{0} - Updated", fileName);
+
+                        //Write each section of the log file
+                        string[] connectionVariables = GetConnectionInfo(boReportDocument.Database);
+                        returnVariables = "\r\n" + "Server Name: " + connectionVariables[0] + "\r\n" + "Database Name: " + connectionVariables[1] + "\r\n" + "User ID: " + connectionVariables[2] + "\r\n" + "Password: " + boConnectionInfo.Password + "\r\n";
                     }
 
-                    fileName = Path.GetFileName(filePath);
-                    Console.WriteLine("{0} - Updated", fileName);
-
-                    //Write each section of the log file
-                    string[] connectionVariables = GetConnectionInfo(boReportDocument.Database);
-                    returnVariables = "\r\n" + "Server Name: " + connectionVariables[0] + "\r\n" + "Database Name: " + connectionVariables[1] + "\r\n" + "User ID: " + connectionVariables[2] + "\r\n" + "Password: " + boConnectionInfo.Password + "\r\n";
-
-                    return DateTime.Now.ToString() + " - " + fileName + " - Updated:" + returnVariables;
+                    return timesRan + ". " + DateTime.Now.ToString() + " - " + fileName + " - Updated:" + returnVariables;
                 }
                 else
                 {
@@ -181,10 +189,11 @@ namespace Shattered_Crystal_Hackathon
             }
             catch(Exception e)
             {
-                Console.WriteLine("{0} - Error encountered", Path.GetFileName(filePath));
+                fileName = Path.GetFileName(filePath);
+                Console.WriteLine("{0} - Error encountered", fileName);
                 Console.WriteLine(e);
                 Console.WriteLine();
-                return DateTime.Now.ToString() + " - " + fileName + " - Error encountered - " + e;
+                return timesRan + ". " + DateTime.Now.ToString() + " - " + fileName + " - Error encountered - " + e;
             }
         }
 
