@@ -85,6 +85,7 @@ namespace Shattered_Crystal_Hackathon
             if (Directory.Exists(newDatabaseInfo.CrystalFilesFolder))
             {
                 Console.WriteLine();
+                Console.WriteLine("--It sometimes takes 3 to 4 minutes per report, don't worry it is working--");
                 Console.WriteLine("Altering crystal files:");
                 int rptFileCount = 0;
                 string[] filesInDirectory = Directory.GetFiles(newDatabaseInfo.CrystalFilesFolder);
@@ -97,6 +98,7 @@ namespace Shattered_Crystal_Hackathon
                     rptFileCount++;
                     filesProcessed++;
                 }
+
                 if(rptFileCount == 0)
                 {
                     EndProgram("Error: No .rpt files found. Add .rpt files to this directory and re-run the program");
@@ -125,7 +127,6 @@ namespace Shattered_Crystal_Hackathon
                 }
             } 
 
-            Console.WriteLine();
             EndProgram("Program finished");
         }
 
@@ -155,9 +156,10 @@ namespace Shattered_Crystal_Hackathon
                 if (fileExtension == ".rpt")
                 {
                     using(ReportDocument boReportDocument = new ReportDocument())
-                    {  
+                    {
+                        //This takes a very long time to load. Cannot find a fix. Issue is compounded by having to call it again to log the changes.
                         boReportDocument.Load(filePath);
-                        
+
                         ConnectionInfo boConnectionInfo = new ConnectionInfo();
                         boConnectionInfo.ServerName = serverName;
                         boConnectionInfo.DatabaseName = databaseName;
@@ -179,8 +181,7 @@ namespace Shattered_Crystal_Hackathon
                                     ReportDocument boSubRpt = boSubReptObj.OpenSubreport(boSubReptObj.SubreportName);
 
                                     SetCrystalTablesLogin(boSubRpt.Database.Tables, boConnectionInfo);
-                                }
-                                        
+                                }        
                             }
                         }
 
@@ -198,10 +199,14 @@ namespace Shattered_Crystal_Hackathon
 
                     using (ReportDocument boReportDocument = new ReportDocument())
                     {
+                        //Takes a very long time for this method
                         boReportDocument.Load(filePath);
+
                         //Write each section of the log file
                         string[] connectionVariables = GetConnectionInfo(boReportDocument.Database);
                         returnVariables = "\r\n" + "Server Name: " + connectionVariables[0] + "\r\n" + "Database Name: " + connectionVariables[1] + "\r\n" + "User ID: " + connectionVariables[2] + "\r\n" + "Password: " + connectionVariables[3] + "\r\n";
+                        Console.WriteLine("{0} - Added Log Entry", fileName);
+                        Console.WriteLine("");
                     }  
 
                     return timesRan + ". " + DateTime.Now.ToString() + " - " + fileName + " - Updated:" + returnVariables;
