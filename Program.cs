@@ -155,30 +155,54 @@ namespace Shattered_Crystal_Hackathon
                 if (fileExtension == ".rpt")
                 {
                     using(ReportDocument boReportDocument = new ReportDocument())
-                    {
-                        
+                    {  
                         boReportDocument.Load(filePath);
-
+                        
                         ConnectionInfo boConnectionInfo = new ConnectionInfo();
                         boConnectionInfo.ServerName = serverName;
                         boConnectionInfo.DatabaseName = databaseName;
                         boConnectionInfo.UserID = userId;
                         boConnectionInfo.Password = password;
 
-                        ModifyConnectionInfo(boReportDocument.Database, boConnectionInfo);
+                        SetCrystalTablesLogin(boReportDocument.Database.Tables, boConnectionInfo);
 
-                        foreach (ReportDocument boSubreport in boReportDocument.Subreports)
+                        foreach (Section boSection in boReportDocument.ReportDefinition.Sections)
                         {
-                            ModifyConnectionInfo(boSubreport.Database, boConnectionInfo);
+                            foreach (ReportObject boRptObj in boSection.ReportObjects)
+                            {
+                                if (boRptObj.Kind == ReportObjectKind.SubreportObject)
+                                {
+                                    //This is a subreport so set the logon credentials for this reports' table
+                                    SubreportObject boSubReptObj = boRptObj as SubreportObject;
+
+                                    //Open the subreport
+                                    ReportDocument boSubRpt = boSubReptObj.OpenSubreport(boSubReptObj.SubreportName);
+
+                                    SetCrystalTablesLogin(boSubRpt.Database.Tables, boConnectionInfo);
+                                }
+                                        
+                            }
                         }
+
+                        boReportDocument.Refresh();
+
+                        //Only works if all the tables have the same information
+                        boReportDocument.SetDatabaseLogon(userId, password, serverName, databaseName);
+
+                        //Replaces the report with the updated report
+                        boReportDocument.SaveAs(filePath);
 
                         fileName = Path.GetFileName(filePath);
                         Console.WriteLine("{0} - Updated", fileName);
+                    }
 
+                    using (ReportDocument boReportDocument = new ReportDocument())
+                    {
+                        boReportDocument.Load(filePath);
                         //Write each section of the log file
                         string[] connectionVariables = GetConnectionInfo(boReportDocument.Database);
-                        returnVariables = "\r\n" + "Server Name: " + connectionVariables[0] + "\r\n" + "Database Name: " + connectionVariables[1] + "\r\n" + "User ID: " + connectionVariables[2] + "\r\n" + "Password: " + boConnectionInfo.Password + "\r\n";
-                    }
+                        returnVariables = "\r\n" + "Server Name: " + connectionVariables[0] + "\r\n" + "Database Name: " + connectionVariables[1] + "\r\n" + "User ID: " + connectionVariables[2] + "\r\n" + "Password: " + connectionVariables[3] + "\r\n";
+                    }  
 
                     return timesRan + ". " + DateTime.Now.ToString() + " - " + fileName + " - Updated:" + returnVariables;
                 }
@@ -197,14 +221,14 @@ namespace Shattered_Crystal_Hackathon
             }
         }
 
-        public static void ModifyConnectionInfo(Database boDatabase, ConnectionInfo boConnectionInfo)
+        public static void SetCrystalTablesLogin(Tables boTables, ConnectionInfo boConnectionInfo)
         {
             // Loop through each Table in the Database and apply the changes
-            foreach (Table boTable in boDatabase.Tables)
+            foreach (Table table in boTables)
             {              
-                TableLogOnInfo boTableLogOnInfo = (TableLogOnInfo)boTable.LogOnInfo.Clone();
+                TableLogOnInfo boTableLogOnInfo = table.LogOnInfo;
                 boTableLogOnInfo.ConnectionInfo = boConnectionInfo;
-                boTable.ApplyLogOnInfo(boTableLogOnInfo);
+                table.ApplyLogOnInfo(boTableLogOnInfo);
 
                 // The location may need to be updated if the fully qualified name changes.
                 //boTable.Location = "";    
@@ -224,7 +248,7 @@ namespace Shattered_Crystal_Hackathon
                 connectionVariables[3] = boTableLogOnInfo.ConnectionInfo.Password;
                 break;
 
-                //Known bug, Password cannot be retrieved. It will be an empy string. I know it is being set though. Cannot figure out fix.
+                //Known bug, Password cannot be retrieved. It will be an empty string. I know it is being set though. Cannot figure out fix.
             }
 
             return connectionVariables;
